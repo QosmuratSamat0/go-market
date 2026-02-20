@@ -1,0 +1,10 @@
+env: local
+
+db_url: postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable
+redis_addr: localhost:6379
+migrations_path: ./migrations
+
+http_addr:
+  address: ":8080"
+  timeout: 4s
+  idle_timeout: 60s

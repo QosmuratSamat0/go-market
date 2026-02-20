@@ -3,11 +3,10 @@ package model
 import "time"
 
 type User struct {
-	ID      string
-	Name    string
-	Email   string
-	Balance float64
-	Role    string
+	ID    string
+	Name  string
+	Email string
+	Role  string
 }
 
 type UserRegisteredEvent struct {
