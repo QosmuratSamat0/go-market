@@ -41,7 +41,7 @@ func NewApp(cfg config.Config, log *slog.Logger) (*App, error) {
 	r.Use(middleware.Recoverer)
 
 	r.Route("/api/v1", func(r chi.Router) {
-		userHTTP.RegisterUserRoutes(r, userHandler)
+		userHTTP.RegisterUserRoutes(r, userHandler, cfg.SecretKey)
 	})
 
 	server := &http.Server{

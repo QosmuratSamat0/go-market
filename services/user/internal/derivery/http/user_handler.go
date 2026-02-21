@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
 	userErr "github.com/go-market/pkg/errs"
+	"github.com/go-market/services/user/internal/derivery/http/middleware"
 	"github.com/go-market/services/user/internal/model"
 	"github.com/go-market/services/user/internal/service"
 )
@@ -92,6 +93,48 @@ func (h *UserHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	render.JSON(w, r, SuccessResponse{Data: response})
 }
 
+func (h *UserHandler) GetMe(w http.ResponseWriter, r *http.Request) {
+	const op = "UserHandler.GetMe"
+	log := h.log.With(slog.String("op", op))
+
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		log.Error("failed to extract user id from context")
+		render.Status(r, http.StatusUnauthorized)
+		render.JSON(w, r, ErrorResponse{Error: "invalid user context"})
+		return
+	}
+
+	user, err := h.svc.GetByID(r.Context(), userID)
+	if err != nil {
+		log.Error("failed to get user", slog.String("error", err.Error()))
+		if errors.Is(err, userErr.ErrInvalidID) {
+			render.Status(r, http.StatusBadRequest)
+			render.JSON(w, r, ErrorResponse{Error: err.Error()})
+			return
+		}
+		if errors.Is(err, userErr.ErrUserNotFound) {
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, ErrorResponse{Error: err.Error()})
+			return
+		}
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, ErrorResponse{Error: "failed to get user"})
+		return
+	}
+
+	response := UserResponse{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		Avatar:    user.Avatar,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+
+	render.JSON(w, r, SuccessResponse{Data: response})
+}
+
 func (h *UserHandler) GetByEmail(w http.ResponseWriter, r *http.Request) {
 	const op = "UserHandler.GetByEmail"
 	log := h.log.With(slog.String("op", op))
@@ -125,52 +168,6 @@ func (h *UserHandler) GetByEmail(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: user.UpdatedAt,
 	}
 
-	render.JSON(w, r, SuccessResponse{Data: response})
-}
-
-func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
-	const op = "UserHandler.Create"
-	log := h.log.With(slog.String("op", op))
-
-	var req CreateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		log.Error("failed to decode request", slog.String("error", err.Error()))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, ErrorResponse{Error: "invalid request body"})
-		return
-	}
-
-	user := model.User{
-		Username:  req.Username,
-		Email:     req.Email,
-		Avatar:    req.Avatar,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	id, err := h.svc.Create(r.Context(), user)
-	if err != nil {
-		log.Error("failed to create user", slog.String("error", err.Error()))
-		if errors.Is(err, userErr.ErrInvalidEmail) {
-			render.Status(r, http.StatusBadRequest)
-			render.JSON(w, r, ErrorResponse{Error: err.Error()})
-			return
-		}
-		if errors.Is(err, userErr.ErrUserExists) {
-			render.Status(r, http.StatusConflict)
-			render.JSON(w, r, ErrorResponse{Error: err.Error()})
-			return
-		}
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, ErrorResponse{Error: "failed to create user"})
-		return
-	}
-
-	response := map[string]string{
-		"id": id,
-	}
-
-	render.Status(r, http.StatusCreated)
 	render.JSON(w, r, SuccessResponse{Data: response})
 }
 

@@ -7,9 +7,9 @@ import (
 	"log/slog"
 
 	userErr "github.com/go-market/pkg/errs"
+	"github.com/go-market/services/user/internal/derivery/http/middleware"
 	user "github.com/go-market/services/user/internal/model"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -27,21 +27,16 @@ func New(db_url string) (*PostgresRepo, error) {
 	return &PostgresRepo{db: db}, nil
 }
 
-func (r *PostgresRepo) Create(ctx context.Context, user user.User) (string, error) {
-	const op = "repo.Create"
+func (r *PostgresRepo) GetMe(ctx context.Context) (*user.User, error) {
+	const op = "repo.GetMe"
 	slog.With("op", op)
-	var id string
-	query := `INSERT INTO users(name, email, avatar) VALUES ($1, $2, $3) RETURNING id`
-	err := r.db.QueryRow(ctx, query, user.Username, user.Email, user.Avatar).Scan(&id)
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return "", fmt.Errorf("%s: %w", op, userErr.ErrUserExists)
-		}
-		return "", fmt.Errorf("%s: %w", op, err)
+
+	userID, ok := ctx.Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		return nil, userErr.ErrInvalidID
 	}
 
-	return id, nil
+	return r.GetByID(ctx, userID)
 }
 
 func (r *PostgresRepo) GetByID(ctx context.Context, id string) (*user.User, error) {

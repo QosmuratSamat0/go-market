@@ -19,6 +19,18 @@ func New(repo userRepo.Repository) *Service {
 	}
 }
 
+func (s *Service) GetMe(ctx context.Context) (*user.User, error) {
+	user, err := s.repo.GetMe(ctx)
+	if err != nil {
+		if errors.Is(err, userErr.ErrUserNotFound) {
+			return nil, err
+		}
+		return nil, userErr.ErrFailedToGetUser
+	}
+
+	return user, err
+}
+
 func (s *Service) GetByID(ctx context.Context, id string) (*user.User, error) {
 	if id == "" {
 		return nil, userErr.ErrInvalidID
@@ -47,21 +59,6 @@ func (s *Service) GetByEmail(ctx context.Context, email string) (*user.User, err
 	}
 
 	return user, err
-}
-
-func (s *Service) Create(ctx context.Context, user user.User) (string, error) {
-	if user.Email == "" {
-		return "", userErr.ErrInvalidEmail
-	}
-	existingUser, err := s.repo.GetByEmail(ctx, user.Email)
-	if err != nil && !errors.Is(err, userErr.ErrUserNotFound) {
-		return "", err
-	}
-	if existingUser != nil {
-		return "", userErr.ErrUserExists
-	}
-
-	return s.repo.Create(ctx, user)
 }
 
 func (s *Service) Update(ctx context.Context, user user.User) error {

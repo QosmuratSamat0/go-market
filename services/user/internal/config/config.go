@@ -14,6 +14,7 @@ type Config struct {
 	RedisAddr      string     `yaml:"redis_addr" env-default:"localhost:6379"`
 	MigrationsPath string     `yaml:"migrations_path" env-default:"file://migrations"`
 	HTTPAddr       HTTPServer `yaml:"http_addr"`
+	SecretKey      string     `yaml:"secret_key"`
 }
 
 type HTTPServer struct {
